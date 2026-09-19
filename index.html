@@ -30,7 +30,7 @@
         }
         h1 { 
             text-align: center;
-            color: #a88ef8;
+            color: #1c0b8d;
             margin-bottom: 1rem;
         }
         .takeinput {
@@ -175,6 +175,18 @@
 
 
         }
+        @media (max-width:600px) {
+            .box {
+                margin-top:20px;
+                padding:1rem;
+            }
+
+            #tasklist {
+                margin-bottom:0.5rem;
+                padding:0.5rem;
+            }
+            
+        }
       
 
 
@@ -212,6 +224,11 @@
         const uncompletedbutton=document.getElementById("clearUndone");
         const notice=document.getElementById("notice");
 
+        // 保存数据，在每次发生变化时引用函数
+        function saveTasks(tasksArray) {
+            localStorage.setItem("tasks",JSON.stringify(tasks))
+        }
+
 
         function noticelist() {
             const taskcount=tasks.length;
@@ -221,7 +238,77 @@
          const undonecount=taskcount-donecount;
          notice.textContent=`共${taskcount}个任务,已完成${donecount}个任务,未完成${undonecount}个任务`
         }
+        
+        // 创建函数，此刻不只有添加按钮监听到了才能添加页面元素，我
+        // 刷新前保存的数据在刷新后只要调用这个函数也可以重新渲染页面
+        function createTaskElement(task) {
+            const li=document.createElement("li");
+            // 遵循的逻辑是先给所有的任务设置默认未完成，所以不加completed标签，
+            // 后面监听到对应事件才加
+            const span=document.createElement("span");
+            span.classList.add("task-text");
+            span.textContent=task.text;
+            li.appendChild(span);
+        
+            const div=document.createElement("div");
+            div.classList.add("task-actions");
+            const toggle=document.createElement("button");
+            toggle.classList.add("toggle");
+            if(task.completed===true)
+            {
+                toggle.textContent="已完成";
+                li.classList.add("completed");
+            }else {
+                toggle.textContent="未完成";
+            }
+            const deletebutton=document.createElement("button");
+            deletebutton.classList.add("delete");
+            deletebutton.textContent="删除";
+            div.appendChild(toggle);
+            div.appendChild(deletebutton);
 
+            li.appendChild(div);
+            taskList.appendChild(li);
+        
+       
+       
+        toggle.addEventListener("click",function() {
+            li.classList.toggle("completed");
+            task.completed=!task.completed;
+            if(task.completed)
+         {
+            toggle.textContent="已完成";
+
+         }else {
+            toggle.textContent="未完成";
+         }
+         saveTasks(tasks);
+
+         noticelist();
+         applyfilter();
+        //  切换任务状态时，由于已经在比如筛选状态为completed情况下切换，为了防止
+        // 切换成未完成后，仍在已完成里显示，所以要重新渲染，识别出这个新切换的未完成任务并
+        // 将他隐藏起来
+         })  
+
+         deletebutton.addEventListener("click",function() {
+            li.remove();
+            //这里是删除函数的回调函数也就是li.remove记住了li，也就是deletebutton调用了他，所以
+            // 相当于绑定了deletebutton和li还有对应task
+            const taskindex=tasks.findIndex(function(item) {
+                return item.id===task.id;
+
+            })
+            if(taskindex!==-1)
+            {
+                tasks.splice(taskindex,1);
+            }
+            noticelist();
+            applyfilter();
+            saveTasks(tasks);
+
+         })
+        }
 
         addbutton.addEventListener("click",function () {
         const textcontent=taskinput.value.trim();
@@ -238,59 +325,13 @@
             completed:false
             }
         tasks.push(task);
+        saveTasks(tasks);
         noticelist();
-
-        const li=document.createElement("li");
-        // 遵循的逻辑是先给所有的任务设置默认未完成，所以不加completed标签，
-        // 后面监听到对应事件才加
-        const span=document.createElement("span");
-        span.classList.add("task-text");
-        span.textContent=task.text;
-        li.appendChild(span);
-        
-        const div=document.createElement("div");
-        div.classList.add("task-actions");
-        const toggle=document.createElement("button");
-        toggle.classList.add("toggle");
-        toggle.textContent="未完成";
-        const deletebutton=document.createElement("button");
-        deletebutton.classList.add("delete");
-        deletebutton.textContent="删除";
-        div.appendChild(toggle);
-        div.appendChild(deletebutton);
-
-        li.appendChild(div);
-        taskList.appendChild(li);
-        toggle.addEventListener("click",function() {
-            li.classList.toggle("completed");
-            task.completed=!task.completed;
-            if(task.completed)
-         {
-            toggle.textContent="已完成";
-
-         }else {
-            toggle.textContent="未完成";
-         }
-
-         noticelist();
-         })  
-
-         deletebutton.addEventListener("click",function() {
-            li.remove();
-            //这里是删除函数的回调函数也就是li.remove记住了li，也就是deletebutton调用了他，所以
-            // 相当于绑定了deletebutton和li还有对应task
-            const taskindex=tasks.findIndex(function(item) {
-                return item.id===task.id;
-
-            })
-            if(taskindex!==-1)
-            {
-                tasks.splice(taskindex,1);
-            }
-            noticelist();
-
-         })
-          taskinput.value="";
+        createTaskElement(task);
+        applyfilter();
+         // 这里相当于重新遍历了所有内容，并且处于当前筛选状态下比如currentFilter="completed"时
+        // 这里新添加的任务就会由于没有completed类而被隐藏起来，所以在这添加该函数就是在重新渲染
+        taskinput.value="";
         //  最后清空输入框作用是当输入后的代码出现错误后，可以及时截住无法继续运行，最后就是
         // 输入框文字仍存在，无法清除，用户知道出现错误，而非出现错误时仍在运行，并得到一个虽然
         // 输入的任务还在但是其他地方比如按钮出现错误效果，得到一个错误结果
@@ -299,55 +340,130 @@
          noticelist();
         //  页面第一次刷新要置零
 
-         completedbutton.addEventListener("click",function() {
-            const Items=taskList.querySelectorAll("li");
+         let currentFilter="none";
+        // 这个语句的目的是创建当前点击的筛选按钮状态变量，
+        // 同时可以起到首次打开页面默认效果为全部状态 
 
-            Items.forEach(function(items) {
-                if(items.classList.contains("completed"))
-            {
-                items.style.display="flex";
 
-            }else {
-                items.style.display="none";
-            }
-            })
-            allbutton.classList.remove("active");
-            completedbutton.classList.add("active");
-            uncompletedbutton.classList.remove("active");
-        })
-
-        uncompletedbutton.addEventListener("click",function() {
-            const Items=taskList.querySelectorAll("li");
-            Items.forEach(function(items) {
-                if(!items.classList.contains("completed"))
-            {
-                items.style.display="flex";
-
-            }else {
-                items.style.display="none";
-            }
-            })
-            allbutton.classList.remove("active");
-            completedbutton.classList.remove("active");
-            uncompletedbutton.classList.add("active");
-        })
-
-        allbutton.addEventListener("click",function() {
-            const Items=taskList.querySelectorAll("li");
-            Items.forEach(function(items) {
-                items.style.display="flex"
-            })
+        //  let变量可以重新赋值，也就是可以变化，但是const不可以，
+        // 函数每调用一次，都会创建一个新的函数作用域，里面的 const 变量也是重新创建的变量，
+        // 而不是给上一次的变量重新赋值。
+        function applyfilter() {
+            if(currentFilter==="none") {
+                allbutton.classList.remove("active");
+                completedbutton.classList.remove("active");
+                uncompletedbutton.classList.remove("active");
+            }else if(currentFilter==="all")
+        {
             allbutton.classList.add("active");
             completedbutton.classList.remove("active");
             uncompletedbutton.classList.remove("active");
+        } else if(currentFilter==="completed") {
+            completedbutton.classList.add("active");
+            allbutton.classList.remove("active");
+            uncompletedbutton.classList.remove("active");
+
+        }
+        else{
+            uncompletedbutton.classList.add("active");
+            allbutton.classList.remove("active");
+            completedbutton.classList.remove("active");
+        }
+        // 可以不用创建三个监听，只需创建一个筛选函数，配上对应按钮点击变量，当监听到事件就可以通过
+        // currentFilter变量来判断当前点击的按钮是哪个，加上条件语句来实现显示隐藏等效果
+        const taskitems=taskList.querySelectorAll("li"); 
+        taskitems.forEach(function(items) {
+                
+                const iscompleted=items.classList.contains("completed");
+                if(currentFilter==="all"||currentFilter==="none") {
+                    
+                    items.style.display="flex";
+                    // 再加一个新的状态，为了点击筛选按钮后再次点击同一个按钮可以取消筛选，显示全部任务
+                    // 但是这个none状态是一个既能显示全部任务，同时不会让全部按钮变为active状态的状态
+                    // 所以我们在上面也对不同状态下的active类进行规定，防止更换状态时active类未被移除
+
+                }
+                else if(currentFilter==="completed") {
+                    if(iscompleted) {
+                        items.style.display="flex";
+                    }
+                    else {
+                        items.style.display="none";
+                    }
+                }
+                else {
+                    if(!iscompleted) {
+                        items.style.display="flex";
+                    }
+                    else {
+                        items.style.display="none";
+                    }
+                }
+
+            }) 
+        }
+
+        allbutton.addEventListener("click",function() {
+            if(currentFilter==="all") {
+                currentFilter="none";
+                applyfilter();
+            }else{
+            currentFilter="all";
+            applyfilter();
+            }
         })
-            taskinput.addEventListener("keydown",function(event){
+        completedbutton.addEventListener("click",function() {
+            if(currentFilter==="completed") {
+                currentFilter="none";
+                applyfilter();
+            }
+            // 这里的逻辑是如果当前点击的按钮是已完成按钮，那么就切换为全部按钮，重新渲染页面
+            else {
+                currentFilter="completed";
+                applyfilter();
+            }
+        })
+        uncompletedbutton.addEventListener("click",function() { 
+            if(currentFilter==="uncompleted") {
+                currentFilter="none";
+                applyfilter();
+            }
+            else {
+                currentFilter="uncompleted";
+
+                applyfilter();
+        }
+        })
+        // 其实这也相当于重新渲染页面了，因为每次有点击事件我们都会调用applyfilter函数，
+        // 然后重新遍历li，重新判断当前点击的按钮是哪个，重新添加active和判断需要显示隐藏的任务
+        // 比如你从已完成换到未完成，他就会监听到点击未完成事件，然后先更换状态，并执行
+        // 未完成状态下的函数，此时就会显示未完成状态下的任务，重新对页面进行未完成状态的渲染了，也算是覆盖了已完成的页面吧
+        applyfilter();
+
+        // 页面刷新后还会有一次默认的js代码执行，所以写在脚本末尾
+        taskmean=localStorage.getItem("tasks");
+        if(taskmean==="null")
+        {
+            tasks=[];
+        }
+        else
+        {
+            taskarr=JSON.parse(taskmean);
+        }
+        // 拿到存储的代码要先判断有无，没有则仍保持空数组
+        taskarr.foreach(function(task) {
+            tasks.push(task);
+            createTaskElement(task);
+        })
+
+         
+        taskinput.addEventListener("keydown",function(event){
                 if(event.key==="Enter") {
                     addbutton.click();
 
                 }
             })
-
+   
          
          
 

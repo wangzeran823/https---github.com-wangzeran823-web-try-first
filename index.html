@@ -449,18 +449,18 @@
 
         // 页面刷新后还会有一次默认的js代码执行，所以写在脚本末尾
         taskmean=localStorage.getItem("tasks");
-        if(taskmean==="null")
-        {
-            tasks=[];
-        }
-        else
+        if(taskmean!==null)
         {
             taskarr=JSON.parse(taskmean);
         }
+    
         // 拿到存储的代码要先判断有无，没有则仍保持空数组
-        taskarr.foreach(function(task) {
+        // 但是你不能重新输入tasks=[],因为const变量是不可以重新赋值的
+        taskarr.forEach(function(task) {
             tasks.push(task);
             createTaskElement(task);
+            noticelist();
+            applyfilter()
         })
 
          
